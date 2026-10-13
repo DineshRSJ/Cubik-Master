@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14112a">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Cubik – a calm cube puzzle</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#14112a;--paper:#f4f0e8;--line:rgba(244,240,232,.28)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#2a2150,#100d20 70%);color:var(--paper);font-family:'Bricolage Grotesque',system-ui,sans-serif;user-select:none}
+#cv{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+section{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 18px) 18px calc(env(safe-area-inset-bottom,0px) + 20px)}
+button,input{pointer-events:auto;font:inherit;border:0;border-radius:999px}
+button{cursor:pointer;padding:13px 22px;font-weight:800;background:var(--paper);color:var(--ink);transition:transform .12s}
+button:active{transform:scale(.95)}button:disabled{opacity:.4}
+button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.ghost{background:rgba(20,17,42,.55);color:var(--paper);border:1.5px solid var(--line);padding:9px 15px;font-weight:500;backdrop-filter:blur(6px)}
+#logo{margin:0;display:flex;gap:6px}
+#logo span{width:clamp(44px,12vw,70px);aspect-ratio:1;border-radius:14px;display:grid;place-items:center;font-size:clamp(26px,7.5vw,44px);font-weight:800;transform:rotate(var(--r))}
+.tag{font-size:clamp(17px,4.4vw,22px);margin:14px 0 0;max-width:22ch;line-height:1.25;font-weight:500}
+.bottom{display:flex;flex-direction:column;align-items:flex-start;gap:14px;width:100%}
+#play{font-size:21px;padding:15px 40px}
+#nm{background:rgba(255,255,255,.1);color:var(--paper);padding:12px 18px;width:min(260px,100%);border:1.5px solid var(--line)}
+#nm::placeholder{color:rgba(244,240,232,.55)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.hint{margin:0;opacity:.7;font-size:14px;max-width:34ch;line-height:1.4}
+.themes{display:flex;gap:10px;align-items:center}.themes b{font-weight:500;font-size:14px;opacity:.8}
+.dot{width:34px;height:34px;padding:0;border:2px solid transparent;pointer-events:auto}
+.dot.on{border-color:#fff;transform:scale(1.12)}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mid{display:flex;flex-direction:column;align-items:center;line-height:1.15;text-shadow:0 1px 8px #000}
+.mid b{font-size:16px}.mid span{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}.mid small{opacity:.7;font-size:12px}
+#tip{text-align:center;margin:0;font-size:16px;opacity:.9;text-shadow:0 1px 8px #000}
+.dock{display:flex;flex-direction:column;gap:12px;align-items:center}
+#fix{font-size:18px;padding:14px 34px}
+.ov{position:fixed;inset:0;background:rgba(12,10,26,.86);backdrop-filter:blur(5px);display:grid;place-items:center;padding:18px;text-align:center}
+#win h2{font-size:clamp(38px,11vw,64px);margin:0}#stars{font-size:40px;letter-spacing:6px;color:#ffd24a;margin:6px 0}
+#win p{font-size:18px;margin:6px 0 20px}
+.pcard{width:min(520px,100%);height:min(640px,100%);display:flex;flex-direction:column;background:#1c1838;border:1.5px solid var(--line);border-radius:24px;padding:14px;text-align:left}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{padding:9px 13px;font-weight:500;background:transparent;color:var(--paper);border:1.5px solid var(--line);font-size:14px}
+.tabs .on{background:var(--paper);color:var(--ink);font-weight:800}.tabs #pclose{margin-left:auto}
+#pbody{overflow:auto;flex:1}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.lvl{padding:8px 0;border-radius:14px;font-size:18px;display:flex;flex-direction:column;align-items:center;min-height:56px}.lvl small{color:#e0a000;font-size:11px;min-height:13px}
+.lvl:disabled{background:rgba(255,255,255,.08);color:var(--paper)}
+.ach{display:flex;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line)}.ach.off{opacity:.4}.ach i{font-size:26px;font-style:normal}.ach p{margin:0;font-size:13px;opacity:.75}
+.note{opacity:.8;line-height:1.5}
+.top{list-style:none;margin:0;padding:0}.top li{display:grid;grid-template-columns:34px 1fr auto 60px;gap:6px;padding:9px 6px;border-bottom:1px solid var(--line);font-size:15px}.top li.me{background:rgba(255,255,255,.1);border-radius:10px}.top em,.top i{font-style:normal;opacity:.8}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<section id="landing">
+  <div><h1 id="logo" aria-label="Cubik"></h1><p class="tag">A calm puzzle. 100 levels. Take your time.</p></div>
+  <div class="bottom">
+    <div class="themes" id="lthemes"><b>Colours</b></div>
+    <input id="nm" maxlength="16" placeholder="Your player name" autocomplete="off">
+    <button id="play">Play</button>
+    <div class="row"><button class="ghost" id="bLv">Levels</button><button class="ghost" id="bTr">Trophies</button><button class="ghost" id="bTop">World top 50</button><button class="ghost" id="lsnd">Music on</button></div>
+    <p class="hint">Spin the cube with your finger. Tap and swipe a face to turn it.</p>
+  </div>
+</section>
+
+<section id="hud" hidden>
+  <div class="bar">
+    <button class="ghost" id="back">Menu</button>
+    <div class="mid"><b id="lv">Level 1</b><span id="tm">0:00</span><small id="mv">0 moves</small></div>
+    <button class="ghost" id="snd">Music on</button>
+  </div>
+  <p id="tip"></p>
+  <div class="dock">
+    <button id="fix">Fix a layer ×3</button>
+    <div class="row"><button class="ghost" id="vl" aria-label="Turn view left">◀ View</button><button class="ghost" id="vf">Flip over</button><button class="ghost" id="vr" aria-label="Turn view right">View ▶</button></div>
+  </div>
+</section>
+
+<div id="win" class="ov" hidden><div><h2>Solved</h2><div id="stars"></div><p id="winTxt"></p>
+  <div class="row" style="justify-content:center"><button id="nextBtn" style="pointer-events:auto">Next level</button><button class="ghost" id="wLv">Levels</button></div></div></div>
+
+<div id="panel" class="ov" hidden><div class="pcard">
+  <div class="tabs"><button class="tab" data-t="levels">Levels</button><button class="tab" data-t="trophies">Trophies</button><button class="tab" data-t="top">Top 50</button><button id="pclose" class="ghost" aria-label="Close">✕</button></div>
+  <div id="pbody"></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=ms=>{const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+
+/* ---------- Online service (optional). Fill in later: Supabase project URL + public "anon" key ---------- */
+const CLOUD={url:'',key:''};
+/* ---------- Saved progress (works fully offline) ---------- */
+let S={name:'',level:1,best:{},clean:0,swift:0,theme:0};
+try{Object.assign(S,JSON.parse(localStorage.getItem('cubikSave')||'{}'))}catch(e){}
+const total=()=>Object.values(S.best).reduce((a,b)=>a+b.t,0);
+const Cloud={on:!!CLOUD.url,
+ h:{apikey:CLOUD.key,Authorization:'Bearer '+CLOUD.key,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},
+ async push(){if(!this.on||!S.name||!navigator.onLine)return;try{await fetch(CLOUD.url+'/rest/v1/players?on_conflict=name',{method:'POST',headers:this.h,body:JSON.stringify({name:S.name,level:S.level,total_time:total(),data:S})})}catch(e){}},
+ async pull(){if(!this.on||!navigator.onLine)return;try{const r=await(await fetch(CLOUD.url+'/rest/v1/players?select=data&name=eq.'+encodeURIComponent(S.name),{headers:this.h})).json();
+  if(r[0]&&r[0].data&&r[0].data.level>S.level){const n=S.name;Object.assign(S,r[0].data,{name:n});saveLocal()}}catch(e){}},
+ async top(){return(await fetch(CLOUD.url+'/rest/v1/players?select=name,level,total_time&order=level.desc,total_time.asc&limit=50',{headers:this.h})).json()}};
+const saveLocal=()=>{try{localStorage.setItem('cubikSave',JSON.stringify(S))}catch(e){}};
+const save=()=>{saveLocal();Cloud.push()};
+
+const THEMES=[
+ {n:'Classic',c:['#c8102e','#ff6a13','#ffffff','#ffd500','#009b48','#0051ba'],body:'#101010'},
+ {n:'Neon',c:['#ff2d95','#ff9100','#eaff3a','#00f0ff','#39ff14','#9d4dff'],body:'#0a0a14'},
+ {n:'Pastel',c:['#ff9aa2','#ffb347','#fdfd96','#b5ead7','#9ad1f5','#c7b8f0'],body:'#3a3550'},
+ {n:'Earth',c:['#c1440e','#e0a458','#f2e8cf','#8fb36b','#386641','#6b4a35'],body:'#1d1a16'}];
+if(!THEMES[S.theme])S.theme=0;
+
+/* ---------- Scene ---------- */
+const cv=$('cv'),renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(40,1,.1,100);
+scene.add(new THREE.HemisphereLight(0xffffff,0x554466,.85));
+const d1=new THREE.DirectionalLight(0xffffff,.8);d1.position.set(4,8,6);scene.add(d1);
+const d2=new THREE.DirectionalLight(0xffffff,.35);d2.position.set(-6,-3,-5);scene.add(d2);
+let theta=.78,phi=1,dist=12,W=1,H=1,mode='landing',vk=0,flip=false,down=null;
+function resize(){W=innerWidth;H=innerHeight;renderer.setSize(W,H,false);camera.aspect=W/H;
+ const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect);
+ dist=Math.max(5.6/Math.tan(vf),5.2/Math.tan(hf));camera.updateProjectionMatrix()}  /* bigger numbers = smaller cube */
+addEventListener('resize',resize);resize();
+
+const bodyMat=new THREE.MeshStandardMaterial({roughness:.6}),stkMat=[0,1,2,3,4,5].map(()=>new THREE.MeshStandardMaterial({roughness:.35,metalness:.05}));
+const bodyGeo=new THREE.BoxGeometry(.98,.98,.98);
+function rr(w,r){const s=new THREE.Shape(),h=w/2;s.moveTo(-h+r,-h);s.lineTo(h-r,-h);s.quadraticCurveTo(h,-h,h,-h+r);s.lineTo(h,h-r);s.quadraticCurveTo(h,h,h-r,h);s.lineTo(-h+r,h);s.quadraticCurveTo(-h,h,-h,h-r);s.lineTo(-h,-h+r);s.quadraticCurveTo(-h,-h,-h+r,-h);return new THREE.ShapeGeometry(s)}
+const stkGeo=rr(.84,.14);let cubies=[],stickers=[];
+function buildCube(){cubies.forEach(c=>c.parent&&c.parent.remove(c));cubies=[];stickers=[];
+ for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){
+  const c=new THREE.Mesh(bodyGeo,bodyMat);c.position.set(x,y,z);
+  [[x,'x',0,1],[y,'y',2,3],[z,'z',4,5]].forEach(([v,a,p,q])=>{if(!v)return;const n=new THREE.Vector3();n[a]=v;
+   const s=new THREE.Mesh(stkGeo,stkMat[v>0?p:q]);s.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);s.position.copy(n).multiplyScalar(.495);
+   s.userData={cid:v>0?p:q,n};c.add(s);stickers.push(s)});
+  scene.add(c);cubies.push(c)}}
+const lum=h=>{const n=parseInt(h.slice(1),16);return .299*(n>>16)+.587*((n>>8)&255)+.114*(n&255)};
+function applyTheme(i){S.theme=i;saveLocal();const t=THEMES[i];t.c.forEach((h,k)=>stkMat[k].color.set(h));bodyMat.color.set(t.body);
+ document.querySelectorAll('#logo span').forEach((s,k)=>{s.style.background=t.c[k%6];s.style.color=lum(t.c[k%6])>140?'#14112a':'#fff'});
+ document.querySelectorAll('.dot').forEach(d=>d.classList.toggle('on',+d.dataset.i===i))}
+THEMES.forEach((t,i)=>{const b=document.createElement('button');b.className='dot';b.dataset.i=i;b.setAttribute('aria-label',t.n+' colours');
+ b.style.background=`conic-gradient(${t.c.map((c,k)=>`${c} ${k*60}deg ${(k+1)*60}deg`).join(',')})`;b.onclick=()=>{applyTheme(i);blip(600)};$('lthemes').appendChild(b)});
+'CUBIK'.split('').forEach((ch,i)=>{const s=document.createElement('span');s.textContent=ch;s.style.setProperty('--r',['-4deg','3deg','-2deg','4deg','-3deg'][i]);$('logo').appendChild(s)});
+buildCube();applyTheme(S.theme);
+
+/* ---------- Turning ---------- */
+let runId=0,busy=false,stack=[],moves=0,tStart=0,tTimer=null,finished=false,level=1,helps=3,used=false;
+function snap(c){c.position.set(Math.round(c.position.x),Math.round(c.position.y),Math.round(c.position.z));
+ const m=new THREE.Matrix4().makeRotationFromQuaternion(c.quaternion);m.elements=m.elements.map(Math.round);c.quaternion.setFromRotationMatrix(m)}
+function turn(ax,layer,dir,dur){return new Promise(res=>{
+ const sel=cubies.filter(c=>Math.round(c.position[ax])===layer),piv=new THREE.Group();scene.add(piv);sel.forEach(c=>piv.attach(c));
+ const v=new THREE.Vector3();v[ax]=1;const t0=performance.now(),tg=dir*Math.PI/2;
+ (function step(){const k=Math.min(1,(performance.now()-t0)/dur),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;piv.quaternion.setFromAxisAngle(v,tg*e);
+  if(k<1)requestAnimationFrame(step);else{piv.updateMatrixWorld();sel.forEach(c=>{if(cubies.includes(c)){scene.attach(c);snap(c)}else piv.remove(c)});scene.remove(piv);res()}})()})}
+function isSolved(){const m={};for(const s of stickers){const n=s.userData.n.clone().applyQuaternion(s.parent.quaternion),k=Math.round(n.x)+','+Math.round(n.y)+','+Math.round(n.z);(m[k]=m[k]||new Set()).add(s.userData.cid)}
+ return Object.values(m).every(s=>s.size===1)}
+function pushMove(m){const t=stack[stack.length-1];if(t&&t[0]===m[0]&&t[1]===m[1]&&t[2]===-m[2])stack.pop();else stack.push(m)}
+
+/* ---------- Levels: same puzzle for every player, gently harder ---------- */
+const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const nMoves=L=>L<=10?[1,1,2,2,2,3,3,3,4,4][L-1]:Math.min(25,4+Math.round((L-10)*.22));
+function updHud(){$('lv').textContent='Level '+level;$('mv').textContent=moves+(moves===1?' move':' moves');$('fix').textContent='Fix a layer ×'+helps;$('fix').disabled=!helps}
+async function startLevel(L){$('panel').hidden=true;$('win').hidden=true;mode='game';level=L;buildCube();stack=[];moves=0;helps=3;used=false;finished=false;
+ clearInterval(tTimer);$('tm').textContent='0:00';updHud();$('landing').hidden=true;$('hud').hidden=false;vk=0;flip=false;
+ $('tip').textContent=L<=2?'Swipe across a face to turn that row':'';busy=true;const tok=++runId;
+ const r=rng(L*7919+13),layers=L<=10?[-1,1]:[-1,0,1];let la='',ll=9;
+ for(let i=0;i<nMoves(L);i++){let ax,ly;do{ax='xyz'[Math.floor(r()*3)];ly=layers[Math.floor(r()*layers.length)]}while(ax===la&&ly===ll);
+  la=ax;ll=ly;const d=r()<.5?1:-1;await turn(ax,ly,d,170);if(tok!==runId)return;pushMove([ax,ly,d])}
+ busy=false;tStart=Date.now();tTimer=setInterval(()=>$('tm').textContent=fmt(Date.now()-tStart),500)}
+async function userMove(ax,l,d){if(busy)return;busy=true;blip(300+Math.random()*100);await turn(ax,l,d,200);busy=false;
+ if(mode!=='game'||finished)return;$('tip').textContent='';pushMove([ax,l,d]);moves++;updHud();if(isSolved())win()}
+async function help(){if(mode!=='game'||busy||finished||!helps||!stack.length)return;helps--;used=true;busy=true;blip(700);
+ const m=stack.pop();await turn(m[0],m[1],-m[2],380);busy=false;updHud();if(isSolved())win()}
+
+/* ---------- Trophies ---------- */
+const nStar3=()=>Object.values(S.best).filter(b=>b.s===3).length;
+const ACH=[['🌱','First solve','Finish level 1',()=>S.best[1]],['🍃','Warmed up','Finish level 10',()=>S.best[10]],['🌿','Getting deep','Finish level 25',()=>S.best[25]],
+ ['🌳','Halfway','Finish level 50',()=>S.best[50]],['🏆','Cube master','Finish level 100',()=>S.best[100]],['🕊️','Unaided','Solve a level without using Fix',()=>S.clean],
+ ['⚡','Swift hands','Solve level 5 or higher in under 10 seconds',()=>S.swift],['⭐','Star collector','Earn 3 stars on 10 levels',()=>nStar3()>=10]];
+function win(){finished=true;clearInterval(tTimer);const t=Math.round((Date.now()-tStart)/1000),n=nMoves(level),before=ACH.filter(a=>a[3]()).length;
+ const st=!used&&t<=10+6*n?3:(!used||t<=20+12*n)?2:1,b=S.best[level];
+ if(!b)S.best[level]={t,s:st};else{b.t=Math.min(b.t,t);b.s=Math.max(b.s,st)}
+ S.level=Math.max(S.level,Math.min(100,level+1));if(!used)S.clean=1;if(t<10&&level>=5)S.swift=1;save();
+ const got=ACH.filter(a=>a[3]()).length-before;
+ $('stars').textContent='★'.repeat(st)+'☆'.repeat(3-st);
+ $('winTxt').textContent=(level>=100?'You finished all 100 levels. ':'')+'Level '+level+' in '+fmt(t*1000)+', '+moves+' moves.'+(got?' Trophy unlocked!':'');
+ $('nextBtn').hidden=level>=100;$('win').hidden=false;[72,76,79,84].forEach((m,i)=>setTimeout(()=>tone(m,.9,.14),i*170))}
+
+/* ---------- Menus ---------- */
+let tab='levels';
+function openPanel(t){tab=t;$('panel').hidden=false;renderPanel()}
+async function renderPanel(){const box=$('pbody');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+ if(tab==='levels'){box.innerHTML='<div class="grid">'+Array.from({length:100},(_,i)=>{const L=i+1,b=S.best[L];return `<button class="lvl" data-l="${L}" ${L>S.level?'disabled':''}>${L>S.level?'🔒':L}<small>${b?'★'.repeat(b.s):''}</small></button>`}).join('')+'</div>';
+  box.querySelectorAll('.lvl').forEach(b=>b.onclick=()=>startLevel(+b.dataset.l))}
+ else if(tab==='trophies')box.innerHTML=ACH.map(a=>`<div class="ach ${a[3]()?'':'off'}"><i>${a[0]}</i><div><b>${a[1]}</b><p>${a[2]}</p></div></div>`).join('');
+ else{box.innerHTML='<p class="note">Loading…</p>';
+  if(!Cloud.on){box.innerHTML=`<p class="note">World records switch on once the online service is connected. For now, your own record: level ${Math.min(S.level,100)}, total solve time ${fmt(total()*1000)}.</p>`;return}
+  try{const r=await Cloud.top();box.innerHTML='<ol class="top">'+r.map((p,i)=>`<li class="${p.name===S.name?'me':''}"><span>${i+1}</span><b>${esc(p.name)}</b><em>Lv ${p.level}</em><i>${fmt(p.total_time*1000)}</i></li>`).join('')+'</ol>'}
+  catch(e){box.innerHTML='<p class="note">Could not reach the leaderboard. Check your connection and try again.</p>'}}}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;renderPanel()});
+$('pclose').onclick=()=>$('panel').hidden=true;
+$('bLv').onclick=()=>openPanel('levels');$('bTr').onclick=()=>openPanel('trophies');$('bTop').onclick=()=>openPanel('top');$('wLv').onclick=()=>openPanel('levels');
+$('nm').value=S.name;const refreshPlay=()=>$('play').textContent=S.level>1?'Continue · Level '+Math.min(S.level,100):'Play';refreshPlay();
+$('play').onclick=async()=>{initAudio();const v=$('nm').value.trim();if(v&&v!==S.name){S.name=v;saveLocal();await Cloud.pull()}startLevel(Math.min(S.level,100))};
+$('nextBtn').onclick=()=>startLevel(Math.min(100,level+1));
+$('fix').onclick=help;
+$('back').onclick=()=>{mode='landing';runId++;busy=false;clearInterval(tTimer);buildCube();$('landing').hidden=false;$('hud').hidden=true;$('win').hidden=true;refreshPlay()};
+$('vl').onclick=()=>vk--;$('vr').onclick=()=>vk++;$('vf').onclick=()=>flip=!flip;
+['snd','lsnd'].forEach(i=>$(i).onclick=()=>{initAudio();setMusic(!musicOn)});
+
+/* ---------- Touch & mouse ---------- */
+const ray=new THREE.Raycaster();
+function pick(e){const r=cv.getBoundingClientRect();ray.setFromCamera({x:((e.clientX-r.left)/r.width)*2-1,y:-((e.clientY-r.top)/r.height)*2+1},camera);
+ const h=ray.intersectObjects(cubies,false)[0];if(!h)return null;const n=h.face.normal.clone().transformDirection(h.object.matrixWorld);
+ n.set(Math.round(n.x),Math.round(n.y),Math.round(n.z));return{cubie:h.object,n}}
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);down={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,hit:pick(e),done:false}});
+cv.addEventListener('pointermove',e=>{if(!down)return;
+ if(!down.hit){if(mode==='landing'){theta-=(e.clientX-down.lx)*.01;phi=Math.min(2.4,Math.max(.7,phi-(e.clientY-down.ly)*.01));down.lx=e.clientX;down.ly=e.clientY}return}
+ const dx=e.clientX-down.x,dy=e.clientY-down.y;if(down.done||Math.hypot(dx,dy)<10||busy)return;down.done=true;
+ const{cubie,n}=down.hit;let best=null;
+ ['x','y','z'].forEach(a=>{if(Math.abs(n[a])>.5)return;const av=new THREE.Vector3();av[a]=1;
+  const p0=cubie.position.clone().project(camera),p1=cubie.position.clone().add(av).project(camera),sx=(p1.x-p0.x)*W/2,sy=-(p1.y-p0.y)*H/2,dot=(sx*dx+sy*dy)/Math.hypot(sx,sy);
+  if(!best||Math.abs(dot)>Math.abs(best.dot))best={av,dot}});
+ const r=n.clone().cross(best.av),ax=r.x?'x':r.y?'y':'z';userMove(ax,Math.round(cubie.position[ax]),(best.dot>0?1:-1)*r[ax])});
+['pointerup','pointercancel'].forEach(t=>cv.addEventListener(t,()=>down=null));
+
+/* ---------- Music: soft, slow, generated live (no files) ---------- */
+let AC,bus,master,musicOn=true,nextT=0,n8=0;
+const chords=[[57,60,64],[53,57,60],[48,52,55],[55,59,62]],mf=m=>440*Math.pow(2,(m-69)/12);
+function tone(m,d,v,type='triangle',att=.01,t){if(!AC)return;t=t||AC.currentTime;const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=mf(m);
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(bus);o.start(t);o.stop(t+d+.05)}
+function blip(hz){if(!AC||!musicOn)return;const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.frequency.setValueAtTime(hz,t);o.frequency.exponentialRampToValueAtTime(hz/2,t+.12);
+ g.gain.setValueAtTime(.1,t);g.gain.exponentialRampToValueAtTime(.0001,t+.14);o.connect(g);g.connect(master);o.start(t);o.stop(t+.16)}
+function sched(){const spb=60/76/2;while(nextT<AC.currentTime+.35){const ch=chords[Math.floor(n8/8)%4],p=n8%8;
+ if(p===0){ch.forEach(m=>tone(m,spb*8,.06,'sine',.9,nextT));tone(ch[0]-12,spb*4,.15,'triangle',.02,nextT)}
+ if(p===4)tone(ch[0]-12,spb*3,.1,'triangle',.02,nextT);
+ if(Math.random()<.6)tone(ch[Math.floor(Math.random()*3)]+12*(1+(Math.random()<.3?1:0)),spb*3,.075,'triangle',.01,nextT);nextT+=spb;n8++}}
+function initAudio(){if(AC){AC.resume();return}AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=musicOn?.55:0;
+ const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2200;bus=AC.createGain();const d=AC.createDelay();d.delayTime.value=.4;const fb=AC.createGain();fb.gain.value=.38;d.connect(fb);fb.connect(d);
+ bus.connect(lp);lp.connect(master);lp.connect(d);d.connect(master);master.connect(AC.destination);nextT=AC.currentTime+.1;setInterval(sched,100)}
+function setMusic(on){musicOn=on;$('snd').textContent=$('lsnd').textContent=on?'Music on':'Music off';if(AC)master.gain.setTargetAtTime(on?.55:0,AC.currentTime,.1)}
+
+/* ---------- Loop ---------- */
+const calm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+(function loop(){
+ if(mode==='game'){theta+=(.78+vk*Math.PI/2-theta)*.12;phi+=((flip?Math.PI-1:1)-phi)*.12}
+ else if(!down&&!calm)theta+=.004;
+ camera.position.set(dist*Math.sin(phi)*Math.sin(theta),dist*Math.cos(phi),dist*Math.sin(phi)*Math.cos(theta));camera.lookAt(0,0,0);
+ renderer.render(scene,camera);requestAnimationFrame(loop)})();
+if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
