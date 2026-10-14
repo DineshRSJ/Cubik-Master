@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#14112a">
 <link rel="manifest" href="manifest.webmanifest">
-<title>Cubik – a calm cube puzzle</title>
+<title>Cubik Master – a calm cube puzzle</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#14112a;--paper:#f4f0e8;--line:rgba(244,240,232,.28)}
@@ -13,6 +13,10 @@
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#2a2150,#100d20 70%);color:var(--paper);font-family:'Bricolage Grotesque',system-ui,sans-serif;user-select:none}
 #bg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}#wb{position:fixed;top:30%;left:0;right:0;text-align:center;font-size:clamp(34px,10vw,60px);font-weight:800;pointer-events:none;z-index:50;text-shadow:0 2px 14px #000;animation:wb 2.4s ease forwards}@keyframes wb{0%{opacity:0;transform:translateY(12px)}20%,70%{opacity:1}100%{opacity:0}}
+#sub{font-weight:800;letter-spacing:.42em;font-size:clamp(19px,5.6vw,28px);margin:10px 0 0 4px}
+#thumb{position:fixed;left:18px;top:calc(env(safe-area-inset-top,0px) + 82px);padding:5px;background:rgba(20,17,42,.6);border:1.5px solid var(--line);border-radius:12px;pointer-events:none}#thumb img{display:block;border-radius:7px}
+#thumb i,.mini i{display:block;width:18px;height:18px;border-radius:4px}.mini{display:grid;grid-template-columns:repeat(3,14px);gap:2px;margin-bottom:4px}.mini i{width:14px;height:14px;border-radius:3px}
+.pulse{animation:pl 1.1s infinite}@keyframes pl{50%{box-shadow:0 0 0 9px rgba(255,255,255,.35)}}.tabs button{padding:8px 10px!important;font-size:13px!important}
 #cv{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
 section{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 18px) 18px calc(env(safe-area-inset-bottom,0px) + 20px)}
 button,input{pointer-events:auto;font:inherit;border:0;border-radius:999px}
@@ -54,16 +58,18 @@ button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3
 </style>
 </head>
 <body>
+<input type="file" id="ph" accept="image/*" hidden>
 <canvas id="bg"></canvas>
 <canvas id="cv"></canvas>
 <div id="wb" hidden></div>
 
 <section id="landing">
-  <div><h1 id="logo" aria-label="Cubik"></h1><p class="tag">A calm puzzle. 100 levels. Take your time.</p></div>
+  <div><h1 id="logo" aria-label="Cubik Master"></h1><div id="sub">MASTER</div><p class="tag">A calm puzzle. 100 levels. Take your time.</p></div>
   <div class="bottom">
     <div class="themes" id="lthemes"><b>Colours</b></div>
     <input id="nm" maxlength="16" placeholder="Your player name" autocomplete="off">
     <button id="play">Play</button>
+    <button id="bCv" class="ghost" style="width:100%;font-size:17px;padding:12px">🎨 Cubik Canvas · picture puzzles</button>
     <div class="row s"><button class="ghost" id="bLv">Levels</button><button class="ghost" id="bTr">Trophies</button><button class="ghost" id="bTop">Top 50</button><button class="ghost" id="bDaily">Daily</button><button class="ghost" id="lsnd">Music on</button></div>
     <div class="row s"><button class="ghost" id="cb">Shapes: off</button><button class="ghost" id="zen">Zen: off</button><button class="ghost" id="coin" style="pointer-events:none"></button></div>
   </div>
@@ -75,6 +81,7 @@ button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3
     <div class="mid"><b id="lv">Level 1</b><span id="tm">0:00</span><small id="mv">0 moves</small></div>
     <button class="ghost" id="snd">Music on</button>
   </div>
+  <div id="thumb"></div>
   <p id="tip"></p>
   <div class="dock">
     <div class="row"><button id="fix">Fix a row ×3</button><button class="ghost" id="hint">Hint · watch ad</button></div>
@@ -88,7 +95,7 @@ button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3
 <div id="ad" class="ov" hidden><div><h2 style="font-size:28px;margin:0 0 8px">Test ad</h2><p>A real video ad will play here.<br>Your hint unlocks in <b id="adN">3</b></p></div></div>
 
 <div id="panel" class="ov" hidden><div class="pcard">
-  <div class="tabs"><button class="tab" data-t="levels">Levels</button><button class="tab" data-t="trophies">Trophies</button><button class="tab" data-t="top">Top 50</button><button id="pclose" class="ghost" aria-label="Close">✕</button></div>
+  <div class="tabs"><button class="tab" data-t="levels">Levels</button><button class="tab" data-t="canvas">Canvas</button><button class="tab" data-t="trophies">Trophies</button><button class="tab" data-t="top">Top 50</button><button id="pclose" class="ghost" aria-label="Close">✕</button></div>
   <div id="pbody"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -176,7 +183,7 @@ function pushMove(m){const t=stack[stack.length-1];if(t&&t[0]===m[0]&&t[1]===m[1
 /* ---------- Levels: same puzzle for every player, gently harder ---------- */
 const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
 const WORLDS=[['Meadow','#2f7a4d','#10281c'],['Ocean','#1b6fb5','#071a33'],['Dusk','#8a3a8f','#1d0c2a'],['Desert','#a8682f','#2a160a'],['Frost','#4a8fb8','#0d2030'],['Jungle','#23864f','#082a1f'],['Sakura','#b0486f','#2a0e1f'],['Volcano','#b03a22','#260a08'],['Space','#3a33a0','#0a0820'],['Night City','#5b2fb0','#0a0a24']];
-let shift=0,lock=null,limit=0,shareTxt='';
+let shift=0,lock=null,limit=0,shareTxt='',cvIdx=-1;
 const wIdx=L=>L>=1000?8:Math.min(9,Math.floor((L-1)/10)),day=()=>Math.floor((Date.now()-new Date().getTimezoneOffset()*6e4)/864e5);
 function setWorld(L){const w=WORLDS[wIdx(L)],g=`radial-gradient(120% 90% at 50% 40%,${w[1]},${w[2]} 70%)`;document.body.style.background=document.documentElement.style.background=g;shift=[0,2,-2,5,-5,3,7,-3,4,-4][wIdx(L)];if(wIdx(L)!==fxW)fxSet(wIdx(L))}
 /* Moving scenery behind the cube: [colour,count,drift x,drift y,min size,max size,style 0 glow/1 bubble/2 petal/3 rain] */
@@ -196,32 +203,63 @@ function banner(n){const e=$('wb');e.textContent=n;e.hidden=false;e.style.animat
 const place=(o,a,l)=>{o.rotation.set(a==='y'?Math.PI/2:0,a==='x'?Math.PI/2:0,0);o.position.set(0,0,0);o.position[a]=l};
 const lockM=new THREE.Mesh(new THREE.BoxGeometry(3.1,3.1,1.08),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.5,depthWrite:false}));lockM.visible=false;scene.add(lockM);
 function confetti(){const c=THEMES[S.theme].c;for(let i=0;i<46;i++){const d=document.createElement('i');d.className='cf';d.style.cssText=`left:${Math.random()*100}vw;background:${c[i%6]};animation-delay:${Math.random()*.5}s;--dx:${Math.random()*120-60}px`;document.body.appendChild(d);setTimeout(()=>d.remove(),3300)}}
-const nMoves=L=>L>=1000?9:L<=10?[1,1,2,2,2,3,3,3,4,4][L-1]:Math.min(25,4+Math.round((L-10)*.22));
-function updHud(){$('lv').textContent=level>=1000?'Daily puzzle':'Level '+level+' · '+WORLDS[wIdx(level)][0];$('mv').textContent=moves+(limit?' / '+limit:'')+(moves===1&&!limit?' move':' moves');$('fix').textContent='Fix a row ×'+helps;$('fix').disabled=!helps;$('hint').textContent=hintLeft>0?'Hint · '+hintLeft+' left':(S.coins||0)>=25?'Hint · 25 🪙':'Hint · watch ad'}
-async function startLevel(L){$('panel').hidden=true;$('win').hidden=true;mode='game';level=L;buildCube();stack=[];moves=0;helps=3;used=false;finished=false;lock=null;limit=0;if(L>20&&L<1000&&L%3===0){const q=rng(L*31+7);lock=['xyz'[Math.floor(q()*3)],q()<.5?-1:1]}if(L>10&&L<1000&&L%5===0)limit=nMoves(L)+3;
+const ci=(x,X,Y,R,c)=>{x.fillStyle=c;x.beginPath();x.arc(X,Y,R,0,6.283);x.fill()},
+ el=(x,X,Y,A,B,c,r=0)=>{x.fillStyle=c;x.beginPath();x.ellipse(X,Y,A,B,r,0,6.283);x.fill()},
+ tri=(x,a,b,c,d,e,f,col)=>{x.fillStyle=col;x.beginPath();x.moveTo(a,b);x.lineTo(c,d);x.lineTo(e,f);x.fill()},
+ rc=(x,X,Y,W,H,c)=>{x.fillStyle=c;x.fillRect(X,Y,W,H)},
+ ln=(x,a,b,c,d,col,w)=>{x.strokeStyle=col;x.lineWidth=w;x.lineCap='round';x.beginPath();x.moveTo(a,b);x.lineTo(c,d);x.stroke()},
+ sky=(x,a,b)=>{const g=x.createLinearGradient(0,0,0,270);g.addColorStop(0,a);g.addColorStop(1,b);x.fillStyle=g;x.fillRect(0,0,270,270)};
+/* Pictures are drawn in code (no files needed). k = how many turns the cube is scrambled by */
+const PICS=[
+{n:'Sunny Hills',k:3,draw:x=>{sky(x,'#6ec6ff','#e3f6ff');ci(x,205,58,32,'#ffd23f');el(x,80,52,28,13,'#fff');el(x,108,45,22,12,'#fff');el(x,60,275,170,105,'#5cb85c');el(x,215,285,150,120,'#2e8b57');rc(x,100,168,56,46,'#f1e0b8');tri(x,92,170,128,136,164,170,'#c0392b');rc(x,120,188,16,26,'#6d4c41');rc(x,106,180,12,12,'#8ecae6')}},
+{n:'Fish',k:4,draw:x=>{sky(x,'#4fc3f7','#01579b');el(x,125,138,72,46,'#ff9800');tri(x,190,138,245,92,245,184,'#ff9800');tri(x,112,100,150,58,162,100,'#f57c00');ci(x,90,126,9,'#fff');ci(x,88,126,4,'#000');ln(x,70,150,84,156,'#b45f00',4);ci(x,40,60,8,'rgba(255,255,255,.5)');ci(x,58,36,5,'rgba(255,255,255,.5)');ln(x,230,270,230,225,'#2e8b57',8);ln(x,30,270,36,230,'#2e8b57',8)}},
+{n:'Cat',k:5,draw:x=>{rc(x,0,0,270,270,'#ffe9a8');tri(x,58,118,66,30,128,70,'#e8891d');tri(x,212,118,204,30,142,70,'#e8891d');el(x,135,152,92,86,'#f5a623');tri(x,74,92,80,56,108,76,'#f4a0b5');tri(x,196,92,190,56,162,76,'#f4a0b5');ci(x,102,138,15,'#fff');ci(x,168,138,15,'#fff');ci(x,104,140,8,'#222');ci(x,166,140,8,'#222');tri(x,124,166,146,166,135,181,'#e75480');ln(x,135,181,135,192,'#7a3b00',3);ln(x,135,192,118,200,'#7a3b00',3);ln(x,135,192,152,200,'#7a3b00',3);ln(x,70,175,108,182,'#7a3b00',3);ln(x,70,195,108,190,'#7a3b00',3);ln(x,200,175,162,182,'#7a3b00',3);ln(x,200,195,162,190,'#7a3b00',3)}},
+{n:'Tree',k:6,draw:x=>{sky(x,'#a8e6ff','#eefaff');ci(x,230,42,24,'#ffd23f');rc(x,0,212,270,58,'#6abf4b');rc(x,118,130,34,95,'#795548');ci(x,135,105,70,'#2e7d32');ci(x,92,138,40,'#388e3c');ci(x,178,138,40,'#388e3c');ci(x,120,95,8,'#e53935');ci(x,160,120,8,'#e53935');ci(x,100,140,8,'#e53935')}},
+{n:'Flower',k:7,draw:x=>{sky(x,'#cdeffd','#f2fff0');rc(x,130,130,10,140,'#43a047');el(x,104,205,30,12,'#66bb6a',-.5);el(x,166,188,30,12,'#66bb6a',.5);for(let i=0;i<8;i++)ci(x,135+Math.cos(i*.785)*48,112+Math.sin(i*.785)*48,28,'#ff6fa5');ci(x,135,112,30,'#ffd23f')}},
+{n:'Boy',k:8,draw:x=>{rc(x,0,0,270,270,'#cfe8ff');el(x,135,118,90,78,'#4b2e1a');el(x,135,150,78,92,'#f1c27d');el(x,135,92,80,40,'#4b2e1a');ci(x,108,146,11,'#fff');ci(x,162,146,11,'#fff');ci(x,110,148,5,'#222');ci(x,160,148,5,'#222');ln(x,92,126,122,128,'#4b2e1a',5);ln(x,148,128,178,126,'#4b2e1a',5);ln(x,135,152,131,176,'#c8946a',4);x.strokeStyle='#b03a2e';x.lineWidth=5;x.beginPath();x.arc(135,176,28,.25,2.9);x.stroke();ci(x,92,180,10,'rgba(255,120,120,.4)');ci(x,178,180,10,'rgba(255,120,120,.4)')}},
+{n:'Rocket',k:9,draw:x=>{sky(x,'#0b0b3a','#3a1c71');for(let i=0;i<24;i++)ci(x,(i*97)%270,(i*61)%270,1.6,'#fff');ci(x,220,56,24,'#8e5ad7');el(x,135,138,34,82,'#eceff1');tri(x,101,100,135,28,169,100,'#e53935');ci(x,135,125,15,'#4fc3f7');tri(x,102,170,66,222,104,206,'#e53935');tri(x,168,170,204,222,166,206,'#e53935');tri(x,120,212,135,258,150,212,'#ffb300')}},
+{n:'My photo',k:6,photo:true}];
+let userImg=null;
+function picSrc(i){const q=PICS[i];if(!q.cv){const c=document.createElement('canvas');c.width=c.height=270;if(q.draw)q.draw(c.getContext('2d'));q.cv=c}return q.cv}
+function picUrl(i,z){const q=PICS[i];q.url=q.url||{};if(!q.url[z]){const c=document.createElement('canvas');c.width=c.height=z;c.getContext('2d').drawImage(picSrc(i),0,0,z,z);q.url[z]=c.toDataURL()}return q.url[z]}
+/* Put one tile of the picture on each of the 9 stickers of the front face */
+function paintTiles(src){for(const s of stickers){if(s.userData.n.z!==1)continue;const h=s.parent.userData.hp,r=1-h.y,c=h.x+1,t=document.createElement('canvas');t.width=t.height=128;t.getContext('2d').drawImage(src,c*90,r*90,90,90,0,0,128,128);
+ const tx=new THREE.CanvasTexture(t);tx.repeat.set(1/.84,1/.84);tx.offset.set(.5,.5);s.material=new THREE.MeshStandardMaterial({map:tx,roughness:.4});s.userData.tile=[r,c]}}
+/* Solved when all 9 tiles share one side, face the same way, and sit in picture order (any side, any way up) */
+function picDone(){const A=[];for(const s of stickers){const t=s.userData.tile;if(!t)continue;const q=s.parent.quaternion.clone().multiply(s.quaternion),f=(x,y,z)=>{const v=new THREE.Vector3(x,y,z).applyQuaternion(q);return[Math.round(v.x),Math.round(v.y),Math.round(v.z)]};A.push([t,f(0,0,1),f(1,0,0),f(0,1,0),s.parent.position])}
+ const[,n,r,u]=A[0];return A.every(([t,n2,r2,u2,p])=>String(n2)===String(n)&&String(r2)===String(r)&&String(u2)===String(u)&&[0,1,2].every(i=>Math.round(p.getComponent(i))===(t[1]-1)*r[i]+(1-t[0])*u[i]+n[i]))}
+const done=()=>cvIdx>=0?picDone():isSolved();
+const nMoves=L=>L>=2000?PICS[L-2000].k:L>=1000?9:L<=10?[1,1,2,2,2,3,3,3,4,4][L-1]:Math.min(25,4+Math.round((L-10)*.22));
+function updHud(){$('lv').textContent=level>=2000?'Canvas · '+PICS[level-2000].n:level>=1000?'Daily puzzle':'Level '+level+' · '+WORLDS[wIdx(level)][0];$('mv').textContent=moves+(limit?' / '+limit:'')+(moves===1&&!limit?' move':' moves');$('fix').textContent='Fix a row ×'+helps;$('fix').disabled=!helps;$('hint').textContent=hintLeft>0?'Hint · '+hintLeft+' left':(S.coins||0)>=25?'Hint · 25 🪙':'Hint · watch ad'}
+async function startLevel(L){$('panel').hidden=true;$('win').hidden=true;mode='game';level=L;buildCube();stack=[];moves=0;helps=(L>20&&L<1000)||(L>=2000&&L-2000>=5)?3:1;used=false;finished=false;cvIdx=L>=2000?L-2000:-1;lock=null;limit=0;if(L>20&&L<1000&&L%3===0){const q=rng(L*31+7);lock=['xyz'[Math.floor(q()*3)],q()<.5?-1:1]}if(L>10&&L<1000&&L%5===0)limit=nMoves(L)+3;
  lockM.visible=!!lock;if(lock)place(lockM,lock[0],lock[1]);setWorld(L);if(L<1000&&(L-1)%10===0)banner('World '+(wIdx(L)+1)+' · '+WORLDS[wIdx(L)][0]);
  clearInterval(tTimer);$('tm').textContent='0:00';updHud();$('landing').hidden=true;$('hud').hidden=false;{const dl=((.78-theta+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;tTheta=theta+dl;tPhi=1}clearHint();fit();
- $('tip').textContent=L<=2?'Swipe across a face to turn that row. Drag empty space to look around.':lock?'The dark layer is locked. Use the others.':limit?'Move limit '+limit+'. Think first.':'';busy=true;const tok=++runId;
- const r=rng(L*7919+13),layers=L<=10?[-1,1]:[-1,0,1];let la='',ll=9;
+ {const tb=$('thumb');tb.hidden=cvIdx<0;if(cvIdx>=0)tb.innerHTML=`<img src="${picUrl(cvIdx,84)}" width="84" height="84" alt="Target picture">`}
+ ['fix','hint'].forEach(i=>$(i).classList.remove('pulse'));if(L===3)$('fix').classList.add('pulse');if(L===4)$('hint').classList.add('pulse');if(L===2)banner('Drag empty space to spin the cube');
+
+ $('tip').textContent=L>=2000?'Bring the 9 picture pieces together on one side':L===1?'Swipe across the glowing layer to turn it back':L===2?'Two moves this time. Follow the glow':L===3?'Stuck? Tap Fix. Early levels give you one use':L===4?'Try Hint, and ◀ ▶ Flip to see every side':lock?'The dark layer is locked. Use the others.':limit?'Move limit '+limit+'. Think first.':'';busy=true;const tok=++runId;
+ const r=rng(L*7919+13),layers=(L<=10||(L>=2000&&L<2004))?[-1,1]:[-1,0,1];let la='',ll=9;
+ if(cvIdx>=0)paintTiles(picSrc(cvIdx));
  for(let i=0;i<nMoves(L);i++){let ax,ly;do{ax='xyz'[Math.floor(r()*3)];ly=layers[Math.floor(r()*layers.length)]}while((ax===la&&ly===ll)||(lock&&ax===lock[0]&&ly===lock[1]));
   la=ax;ll=ly;const d=r()<.5?1:-1;await turn(ax,ly,d,170);if(tok!==runId)return;pushMove([ax,ly,d])}
- busy=false;tStart=Date.now();tTimer=setInterval(()=>$('tm').textContent=fmt(Date.now()-tStart),500)}
+ while(cvIdx>=0&&picDone()){const ax='xyz'[Math.floor(r()*3)],ly=[-1,1][Math.floor(r()*2)];await turn(ax,ly,1,170);if(tok!==runId)return;pushMove([ax,ly,1])}
+ busy=false;tStart=Date.now();tTimer=setInterval(()=>$('tm').textContent=fmt(Date.now()-tStart),500);if(L<=2){hintLeft=L===1?1:2;showHint()}}
 async function userMove(ax,l,d){if(busy)return;if(mode==='game'&&lock&&ax===lock[0]&&l===lock[1]){blip(120);return}busy=true;blip(300+Math.random()*100);if(navigator.vibrate)navigator.vibrate(12);await turn(ax,l,d,200);busy=false;
- if(mode!=='game'||finished)return;const bf=stack.length;pushMove([ax,l,d]);moves++;if(hintLeft>0){if(stack.length<bf)hintLeft--;hintLeft>0?showHint():clearHint()}else $('tip').textContent='';updHud();if(isSolved())win();else if(limit&&moves>=limit)lose()}
+ if(mode!=='game'||finished)return;const bf=stack.length;pushMove([ax,l,d]);moves++;if(hintLeft>0){if(stack.length<bf)hintLeft--;hintLeft>0?showHint():clearHint()}else $('tip').textContent='';updHud();if(done())win();else if(limit&&moves>=limit)lose()}
 const homeOk=c=>{const h=c.userData.hp,p=c.position;return(!h.x&&!h.y&&!h.z)||(Math.round(p.x)===h.x&&Math.round(p.y)===h.y&&Math.round(p.z)===h.z&&Math.abs(c.quaternion.w)>.999)};
 const rowsDone=()=>lines.filter(l=>l.every(homeOk)).length;
 function lose(){finished=true;clearInterval(tTimer);clearHint();$('winH').textContent='Out of moves';$('stars').textContent='';$('winTxt').textContent='So close. Try again, you can do it.';$('nextBtn').hidden=false;$('nextBtn').textContent='Retry';$('nextBtn').onclick=()=>startLevel(level);$('win').hidden=false}
 /* Fix a row: plays the solving moves until one more full line of 3 pieces is back home */
 async function fixRow(){if(mode!=='game'||busy||finished||!helps||!stack.length)return;helps--;used=true;busy=true;clearHint();blip(700);
  const base=rowsDone();let k=0;
- while(stack.length&&k<40){const m=stack.pop();await turn(m[0],m[1],-m[2],170);k++;if(rowsDone()>base)break}
- busy=false;updHud();if(isSolved())win()}
+ const cap=cvIdx>=0?Math.max(1,Math.ceil(stack.length/2)):40;while(stack.length&&k<cap){const m=stack.pop();await turn(m[0],m[1],-m[2],170);k++;if(cvIdx<0&&rowsDone()>base)break}
+ busy=false;updHud();if(done())win()}
 /* Hint: glowing layer + nudge shows the next 3 solving moves */
 const slab=new THREE.Mesh(new THREE.BoxGeometry(3.1,3.1,1.08),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.28,depthWrite:false}));slab.visible=false;scene.add(slab);
 function clearHint(){hintLeft=0;hMove=null;slab.visible=false;clearInterval(hintTimer);$('tip').textContent='';updHud()}
 function showHint(){if(hintLeft<=0||!stack.length){clearHint();return}
  const m=stack[stack.length-1];hMove=[m[0],m[1],-m[2]];place(slab,m[0],m[1]);slab.visible=true;
- $('tip').textContent='Hint '+(4-hintLeft)+' of 3: turn the glowing layer the way it nudges';
+ $('tip').textContent=level<=2?'Swipe across the glowing layer the way it nudges':'Hint '+(4-hintLeft)+' of 3: turn the glowing layer the way it nudges';
  const w=async()=>{if(busy||down||!hMove||mode!=='game')return;busy=true;await turn(hMove[0],hMove[1],hMove[2],650,true);busy=false};
  clearInterval(hintTimer);hintTimer=setInterval(w,2400);w();updHud()}
 /* Test ad: replace this countdown with a real rewarded-ad call once an ad network is set up */
@@ -237,12 +275,12 @@ const ACH=[['🌱','First solve','Finish level 1',()=>S.best[1]],['🍃','Warmed
  ['⚡','Swift hands','Solve level 5 or higher in under 10 seconds',()=>S.swift],['⭐','Star collector','Earn 3 stars on 10 levels',()=>nStar3()>=10]];
 function win(){finished=true;clearInterval(tTimer);clearHint();const t=Math.round((Date.now()-tStart)/1000),n=nMoves(level),before=ACH.filter(a=>a[3]()).length;
  const st=!used&&t<=10+6*n?3:(!used||t<=20+12*n)?2:1,b=S.best[level];
- const dly=level>=1000;if(dly)S.dailyBest=Math.min(S.dailyBest||1e9,t);else{if(!b)S.best[level]={t,s:st};else{b.t=Math.min(b.t,t);b.s=Math.max(b.s,st)}S.level=Math.max(S.level,Math.min(100,level+1))}
- const gain=dly?15:st*5;S.coins=(S.coins||0)+gain;if(!used)S.clean=1;if(t<10&&level>=5&&!dly)S.swift=1;save();confetti();shareTxt='I solved '+(dly?'today\'s Cubik daily puzzle':'Cubik level '+level)+' in '+fmt(t*1000)+'. Beat me!';
+ const dly=level>=1000,cvl=level>=2000;if(cvl){const i=level-2000;S.cvBest=S.cvBest||{};S.cvBest[i]=Math.min(S.cvBest[i]||1e9,t);S.cv=Math.max(S.cv||1,Math.min(PICS.length,i+2))}else if(dly)S.dailyBest=Math.min(S.dailyBest||1e9,t);else{if(!b)S.best[level]={t,s:st};else{b.t=Math.min(b.t,t);b.s=Math.max(b.s,st)}S.level=Math.max(S.level,Math.min(100,level+1))}
+ const gain=dly?15:st*5;S.coins=(S.coins||0)+gain;if(!used)S.clean=1;if(t<10&&level>=5&&!dly)S.swift=1;save();confetti();shareTxt='I solved '+(cvl?'a Cubik Canvas picture':dly?"today's Cubik Master daily puzzle":'Cubik Master level '+level)+' in '+fmt(t*1000)+'. Beat me!';
  const got=ACH.filter(a=>a[3]()).length-before;
  $('stars').textContent='★'.repeat(st)+'☆'.repeat(3-st);
- $('winTxt').textContent=(level>=100?'You finished all 100 levels. ':'')+(dly?'Daily puzzle':'Level '+level)+' in '+fmt(t*1000)+', '+moves+' moves. +'+gain+' coins.'+(got?' Trophy unlocked!':'');
- $('winH').textContent='Solved';$('nextBtn').hidden=level===100;$('nextBtn').textContent=dly?'Continue levels':'Next level';$('nextBtn').onclick=()=>startLevel(dly?Math.min(S.level,100):Math.min(100,level+1));$('win').hidden=false;[72,76,79,84].forEach((m,i)=>setTimeout(()=>tone(m,.9,.14),i*170))}
+ $('winTxt').textContent=(level>=100?'You finished all 100 levels. ':'')+(cvl?'Picture':dly?'Daily puzzle':'Level '+level)+' in '+fmt(t*1000)+', '+moves+' moves. +'+gain+' coins.'+(got?' Trophy unlocked!':'');
+ $('winH').textContent='Solved';$('nextBtn').hidden=cvl?level-2000>=PICS.length-2:level===100;$('nextBtn').textContent=cvl?'Next picture':dly?'Continue levels':'Next level';$('nextBtn').onclick=()=>startLevel(cvl?level+1:dly?Math.min(S.level,100):Math.min(100,level+1));$('win').hidden=false;[72,76,79,84].forEach((m,i)=>setTimeout(()=>tone(m,.9,.14),i*170))}
 
 /* ---------- Menus ---------- */
 let tab='levels';
@@ -250,6 +288,8 @@ function openPanel(t){tab=t;$('panel').hidden=false;renderPanel()}
 async function renderPanel(){const box=$('pbody');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
  if(tab==='levels'){box.innerHTML='<div class="grid">'+Array.from({length:100},(_,i)=>{const L=i+1,b=S.best[L];return `<button class="lvl" data-l="${L}" ${L>S.level?'disabled':''}>${L>S.level?'🔒':L}<small>${b?'★'.repeat(b.s):''}</small></button>`}).join('')+'</div>';
   box.querySelectorAll('.lvl').forEach(b=>b.onclick=()=>startLevel(+b.dataset.l))}
+ else if(tab==='canvas'){const u=S.cv||1;box.innerHTML='<div class="grid" style="grid-template-columns:repeat(2,1fr)">'+PICS.map((q,i)=>{const lock=!q.photo&&i>=u;return `<button class="lvl" data-i="${i}" ${lock?'disabled':''}>${q.photo&&!userImg?'<span style="font-size:34px;line-height:64px">📷</span>':`<img src="${picUrl(i,64)}" width="64" height="64" style="border-radius:8px">`}${lock?'🔒 ':''}${q.n}<small style="color:inherit;opacity:.7">${q.photo?'Choose your own':S.cvBest&&S.cvBest[i]?'Best '+fmt(S.cvBest[i]*1000):''}</small></button>`}).join('')+'</div>';
+  box.querySelectorAll('.lvl').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(PICS[i].photo)$('ph').click();else startLevel(2000+i)})}
  else if(tab==='trophies')box.innerHTML=ACH.map(a=>`<div class="ach ${a[3]()?'':'off'}"><i>${a[0]}</i><div><b>${a[1]}</b><p>${a[2]}</p></div></div>`).join('');
  else{box.innerHTML='<p class="note">Loading…</p>';
   if(!Cloud.on){box.innerHTML=`<p class="note">World records switch on once the online service is connected. For now, your own record: level ${Math.min(S.level,100)}, total solve time ${fmt(total()*1000)}.</p>`;return}
@@ -257,7 +297,8 @@ async function renderPanel(){const box=$('pbody');document.querySelectorAll('.ta
   catch(e){box.innerHTML='<p class="note">Could not reach the leaderboard. Check your connection and try again.</p>'}}}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;renderPanel()});
 $('pclose').onclick=()=>$('panel').hidden=true;
-$('bLv').onclick=()=>openPanel('levels');$('bTr').onclick=()=>openPanel('trophies');$('bTop').onclick=()=>openPanel('top');$('wLv').onclick=()=>openPanel('levels');
+$('bLv').onclick=()=>openPanel('levels');$('bCv').onclick=()=>openPanel('canvas');
+$('ph').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=270;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,270,270);userImg=c;const q=PICS[PICS.length-1];q.cv=c;q.url={};startLevel(2000+PICS.length-1)};im.src=URL.createObjectURL(f);e.target.value=''};$('bTr').onclick=()=>openPanel('trophies');$('bTop').onclick=()=>openPanel('top');$('wLv').onclick=()=>openPanel('levels');
 $('nm').value=S.name;const refreshPlay=()=>{$('play').textContent=S.level>1?'Continue · Level '+Math.min(S.level,100):'Play';$('coin').textContent='🪙 '+(S.coins||0)+' · 🔥 '+(S.streak||1)+(S.streak>1?' days':' day')};
 $('play').onclick=async()=>{initAudio();const v=$('nm').value.trim();if(v&&v!==S.name){S.name=v;saveLocal();await Cloud.pull()}startLevel(Math.min(S.level,100))};
 $('nextBtn').onclick=()=>startLevel(Math.min(100,level+1));
@@ -267,7 +308,7 @@ $('vl').onclick=()=>tTheta-=Math.PI/2;$('vr').onclick=()=>tTheta+=Math.PI/2;$('v
 $('bDaily').onclick=()=>{initAudio();startLevel(1000+day()%9000)};
 $('cb').onclick=()=>{S.cb=!S.cb;saveLocal();applyCB()};
 const applyZen=()=>{$('tm').style.visibility=S.zen?'hidden':'visible';$('zen').textContent='Zen: '+(S.zen?'on':'off')};$('zen').onclick=()=>{S.zen=!S.zen;saveLocal();applyZen()};
-$('shareB').onclick=()=>{if(navigator.share)navigator.share({title:'Cubik',text:shareTxt,url:location.href}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(shareTxt+' '+location.href)};
+$('shareB').onclick=()=>{if(navigator.share)navigator.share({title:'Cubik Master',text:shareTxt,url:location.href}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(shareTxt+' '+location.href)};
 ['snd','lsnd'].forEach(i=>$(i).onclick=()=>{initAudio();setMusic(!musicOn)});
 
 /* ---------- Touch & mouse ---------- */
