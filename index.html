@@ -27,7 +27,7 @@ button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3
 #nm{background:rgba(255,255,255,.1);color:var(--paper);padding:12px 18px;width:100%;border:1.5px solid var(--line)}
 #nm::placeholder{color:rgba(244,240,232,.55)}
 .row{display:flex;gap:8px;flex-wrap:wrap}
-.hint{margin:0;opacity:.7;font-size:13px;line-height:1.4}.row.s{flex-wrap:nowrap;width:100%}.row.s button{padding:9px 11px;font-size:14px;flex:1}
+.hint{margin:0;opacity:.7;font-size:13px;line-height:1.4}.row.s{flex-wrap:wrap;width:100%}.cf{position:fixed;top:-14px;width:9px;height:14px;border-radius:2px;z-index:60;pointer-events:none;animation:fall 2.6s ease-in forwards}@keyframes fall{to{transform:translate(var(--dx),108vh) rotate(720deg)}}.row.s button{padding:9px 11px;font-size:14px;flex:1}
 .themes{display:flex;gap:10px;align-items:center}.themes b{font-weight:500;font-size:14px;opacity:.8}
 .dot{width:34px;height:34px;padding:0;border:2px solid transparent;pointer-events:auto}
 .dot.on{border-color:#fff;transform:scale(1.12)}
@@ -61,8 +61,8 @@ button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3
     <div class="themes" id="lthemes"><b>Colours</b></div>
     <input id="nm" maxlength="16" placeholder="Your player name" autocomplete="off">
     <button id="play">Play</button>
-    <div class="row s"><button class="ghost" id="bLv">Levels</button><button class="ghost" id="bTr">Trophies</button><button class="ghost" id="bTop">Top 50</button><button class="ghost" id="lsnd">Music on</button></div>
-    <p class="hint">Drag the empty space to spin the cube. Swipe a face to turn it.</p>
+    <div class="row s"><button class="ghost" id="bLv">Levels</button><button class="ghost" id="bTr">Trophies</button><button class="ghost" id="bTop">Top 50</button><button class="ghost" id="bDaily">Daily</button><button class="ghost" id="lsnd">Music on</button></div>
+    <div class="row s"><button class="ghost" id="cb">Shapes: off</button><button class="ghost" id="zen">Zen: off</button><button class="ghost" id="coin" style="pointer-events:none"></button></div>
   </div>
 </section>
 
@@ -79,8 +79,8 @@ button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3
   </div>
 </section>
 
-<div id="win" class="ov" hidden><div><h2>Solved</h2><div id="stars"></div><p id="winTxt"></p>
-  <div class="row" style="justify-content:center"><button id="nextBtn" style="pointer-events:auto">Next level</button><button class="ghost" id="wLv">Levels</button></div></div></div>
+<div id="win" class="ov" hidden><div><h2 id="winH">Solved</h2><div id="stars"></div><p id="winTxt"></p>
+  <div class="row" style="justify-content:center"><button id="nextBtn" style="pointer-events:auto">Next level</button><button class="ghost" id="shareB" style="pointer-events:auto">Share</button><button class="ghost" id="wLv">Levels</button></div></div></div>
 
 <div id="ad" class="ov" hidden><div><h2 style="font-size:28px;margin:0 0 8px">Test ad</h2><p>A real video ad will play here.<br>Your hint unlocks in <b id="adN">3</b></p></div></div>
 
@@ -153,6 +153,9 @@ THEMES.forEach((t,i)=>{const b=document.createElement('button');b.className='dot
  b.style.background=`conic-gradient(${t.c.map((c,k)=>`${c} ${k*60}deg ${(k+1)*60}deg`).join(',')})`;b.onclick=()=>{applyTheme(i);blip(600)};$('lthemes').appendChild(b)});
 'CUBIK'.split('').forEach((ch,i)=>{const s=document.createElement('span');s.textContent=ch;s.style.setProperty('--r',['-4deg','3deg','-2deg','4deg','-3deg'][i]);$('logo').appendChild(s)});
 buildCube();applyTheme(S.theme);
+const glyph='●▲■◆★✚'.split('').map(g=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,64,64);x.fillStyle='rgba(0,0,0,.5)';x.font='36px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(g,32,34);
+ const t=new THREE.CanvasTexture(c);t.repeat.set(1/.84,1/.84);t.offset.set(.5,.5);return t});
+const applyCB=()=>{stkMat.forEach((m,k)=>{m.map=S.cb?glyph[k]:null;m.needsUpdate=true});$('cb').textContent='Shapes: '+(S.cb?'on':'off')};
 
 /* ---------- Turning ---------- */
 let hintLeft=0,hintTimer=null,hMove=null,runId=0,busy=false,stack=[],moves=0,tStart=0,tTimer=null,finished=false,level=1,helps=3,used=false;
@@ -169,19 +172,28 @@ function pushMove(m){const t=stack[stack.length-1];if(t&&t[0]===m[0]&&t[1]===m[1
 
 /* ---------- Levels: same puzzle for every player, gently harder ---------- */
 const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
-const nMoves=L=>L<=10?[1,1,2,2,2,3,3,3,4,4][L-1]:Math.min(25,4+Math.round((L-10)*.22));
-function updHud(){$('lv').textContent='Level '+level;$('mv').textContent=moves+(moves===1?' move':' moves');$('fix').textContent='Fix a row ×'+helps;$('fix').disabled=!helps;$('hint').textContent=hintLeft>0?'Hint · '+hintLeft+' left':'Hint · watch ad'}
-async function startLevel(L){$('panel').hidden=true;$('win').hidden=true;mode='game';level=L;buildCube();stack=[];moves=0;helps=3;used=false;finished=false;
+const WORLDS=[['Meadow','#1f3b2d','#0c1a14'],['Ocean','#12396b','#07162b'],['Dusk','#5b2a5e','#1a0c24'],['Desert','#6b4423','#22140a'],['Frost','#2b4f6b','#0b1722'],['Jungle','#1c5a3a','#07201a'],['Sakura','#6b2f45','#240e1a'],['Volcano','#6b2218','#1f0a08'],['Space','#25205a','#0a0820'],['Night City','#3a1f6b','#0a0a1c']];
+let shift=0,lock=null,limit=0,shareTxt='';
+const wIdx=L=>L>=1000?8:Math.min(9,Math.floor((L-1)/10)),day=()=>Math.floor((Date.now()-new Date().getTimezoneOffset()*6e4)/864e5);
+function setWorld(L){const w=WORLDS[wIdx(L)],g=`radial-gradient(120% 90% at 50% 40%,${w[1]},${w[2]} 70%)`;document.body.style.background=document.documentElement.style.background=g;shift=[0,2,-2,5,-5,3,7,-3,4,-4][wIdx(L)]}
+const place=(o,a,l)=>{o.rotation.set(a==='y'?Math.PI/2:0,a==='x'?Math.PI/2:0,0);o.position.set(0,0,0);o.position[a]=l};
+const lockM=new THREE.Mesh(new THREE.BoxGeometry(3.1,3.1,1.08),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.5,depthWrite:false}));lockM.visible=false;scene.add(lockM);
+function confetti(){const c=THEMES[S.theme].c;for(let i=0;i<46;i++){const d=document.createElement('i');d.className='cf';d.style.cssText=`left:${Math.random()*100}vw;background:${c[i%6]};animation-delay:${Math.random()*.5}s;--dx:${Math.random()*120-60}px`;document.body.appendChild(d);setTimeout(()=>d.remove(),3300)}}
+const nMoves=L=>L>=1000?9:L<=10?[1,1,2,2,2,3,3,3,4,4][L-1]:Math.min(25,4+Math.round((L-10)*.22));
+function updHud(){$('lv').textContent=level>=1000?'Daily puzzle':'Level '+level+' · '+WORLDS[wIdx(level)][0];$('mv').textContent=moves+(limit?' / '+limit:'')+(moves===1&&!limit?' move':' moves');$('fix').textContent='Fix a row ×'+helps;$('fix').disabled=!helps;$('hint').textContent=hintLeft>0?'Hint · '+hintLeft+' left':(S.coins||0)>=25?'Hint · 25 🪙':'Hint · watch ad'}
+async function startLevel(L){$('panel').hidden=true;$('win').hidden=true;mode='game';level=L;buildCube();stack=[];moves=0;helps=3;used=false;finished=false;lock=null;limit=0;if(L>20&&L<1000&&L%3===0){const q=rng(L*31+7);lock=['xyz'[Math.floor(q()*3)],q()<.5?-1:1]}if(L>10&&L<1000&&L%5===0)limit=nMoves(L)+3;
+ lockM.visible=!!lock;if(lock)place(lockM,lock[0],lock[1]);setWorld(L);
  clearInterval(tTimer);$('tm').textContent='0:00';updHud();$('landing').hidden=true;$('hud').hidden=false;{const dl=((.78-theta+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;tTheta=theta+dl;tPhi=1}clearHint();fit();
- $('tip').textContent=L<=2?'Swipe across a face to turn that row. Drag empty space to look around.':'';busy=true;const tok=++runId;
+ $('tip').textContent=L<=2?'Swipe across a face to turn that row. Drag empty space to look around.':lock?'The dark layer is locked. Use the others.':limit?'Move limit '+limit+'. Think first.':'';busy=true;const tok=++runId;
  const r=rng(L*7919+13),layers=L<=10?[-1,1]:[-1,0,1];let la='',ll=9;
- for(let i=0;i<nMoves(L);i++){let ax,ly;do{ax='xyz'[Math.floor(r()*3)];ly=layers[Math.floor(r()*layers.length)]}while(ax===la&&ly===ll);
+ for(let i=0;i<nMoves(L);i++){let ax,ly;do{ax='xyz'[Math.floor(r()*3)];ly=layers[Math.floor(r()*layers.length)]}while((ax===la&&ly===ll)||(lock&&ax===lock[0]&&ly===lock[1]));
   la=ax;ll=ly;const d=r()<.5?1:-1;await turn(ax,ly,d,170);if(tok!==runId)return;pushMove([ax,ly,d])}
  busy=false;tStart=Date.now();tTimer=setInterval(()=>$('tm').textContent=fmt(Date.now()-tStart),500)}
-async function userMove(ax,l,d){if(busy)return;busy=true;blip(300+Math.random()*100);await turn(ax,l,d,200);busy=false;
- if(mode!=='game'||finished)return;const bf=stack.length;pushMove([ax,l,d]);moves++;if(hintLeft>0){if(stack.length<bf)hintLeft--;hintLeft>0?showHint():clearHint()}else $('tip').textContent='';updHud();if(isSolved())win()}
+async function userMove(ax,l,d){if(busy)return;if(mode==='game'&&lock&&ax===lock[0]&&l===lock[1]){blip(120);return}busy=true;blip(300+Math.random()*100);if(navigator.vibrate)navigator.vibrate(12);await turn(ax,l,d,200);busy=false;
+ if(mode!=='game'||finished)return;const bf=stack.length;pushMove([ax,l,d]);moves++;if(hintLeft>0){if(stack.length<bf)hintLeft--;hintLeft>0?showHint():clearHint()}else $('tip').textContent='';updHud();if(isSolved())win();else if(limit&&moves>=limit)lose()}
 const homeOk=c=>{const h=c.userData.hp,p=c.position;return(!h.x&&!h.y&&!h.z)||(Math.round(p.x)===h.x&&Math.round(p.y)===h.y&&Math.round(p.z)===h.z&&Math.abs(c.quaternion.w)>.999)};
 const rowsDone=()=>lines.filter(l=>l.every(homeOk)).length;
+function lose(){finished=true;clearInterval(tTimer);clearHint();$('winH').textContent='Out of moves';$('stars').textContent='';$('winTxt').textContent='So close. Try again, you can do it.';$('nextBtn').hidden=false;$('nextBtn').textContent='Retry';$('nextBtn').onclick=()=>startLevel(level);$('win').hidden=false}
 /* Fix a row: plays the solving moves until one more full line of 3 pieces is back home */
 async function fixRow(){if(mode!=='game'||busy||finished||!helps||!stack.length)return;helps--;used=true;busy=true;clearHint();blip(700);
  const base=rowsDone();let k=0;
@@ -191,12 +203,13 @@ async function fixRow(){if(mode!=='game'||busy||finished||!helps||!stack.length)
 const slab=new THREE.Mesh(new THREE.BoxGeometry(3.1,3.1,1.08),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.28,depthWrite:false}));slab.visible=false;scene.add(slab);
 function clearHint(){hintLeft=0;hMove=null;slab.visible=false;clearInterval(hintTimer);$('tip').textContent='';updHud()}
 function showHint(){if(hintLeft<=0||!stack.length){clearHint();return}
- const m=stack[stack.length-1];hMove=[m[0],m[1],-m[2]];slab.rotation.set(m[0]==='y'?Math.PI/2:0,m[0]==='x'?Math.PI/2:0,0);slab.position.set(0,0,0);slab.position[m[0]]=m[1];slab.visible=true;
+ const m=stack[stack.length-1];hMove=[m[0],m[1],-m[2]];place(slab,m[0],m[1]);slab.visible=true;
  $('tip').textContent='Hint '+(4-hintLeft)+' of 3: turn the glowing layer the way it nudges';
  const w=async()=>{if(busy||down||!hMove||mode!=='game')return;busy=true;await turn(hMove[0],hMove[1],hMove[2],650,true);busy=false};
  clearInterval(hintTimer);hintTimer=setInterval(w,2400);w();updHud()}
 /* Test ad: replace this countdown with a real rewarded-ad call once an ad network is set up */
 function onHint(){if(mode!=='game'||finished||!stack.length)return;if(hintLeft>0){showHint();return}
+ if((S.coins||0)>=25){S.coins-=25;save();hintLeft=3;used=true;showHint();return}
  $('ad').hidden=false;let n=3;$('adN').textContent=n;
  const iv=setInterval(()=>{n--;$('adN').textContent=n;if(n<=0){clearInterval(iv);$('ad').hidden=true;hintLeft=3;used=true;showHint()}},1000)}
 
@@ -207,12 +220,12 @@ const ACH=[['🌱','First solve','Finish level 1',()=>S.best[1]],['🍃','Warmed
  ['⚡','Swift hands','Solve level 5 or higher in under 10 seconds',()=>S.swift],['⭐','Star collector','Earn 3 stars on 10 levels',()=>nStar3()>=10]];
 function win(){finished=true;clearInterval(tTimer);clearHint();const t=Math.round((Date.now()-tStart)/1000),n=nMoves(level),before=ACH.filter(a=>a[3]()).length;
  const st=!used&&t<=10+6*n?3:(!used||t<=20+12*n)?2:1,b=S.best[level];
- if(!b)S.best[level]={t,s:st};else{b.t=Math.min(b.t,t);b.s=Math.max(b.s,st)}
- S.level=Math.max(S.level,Math.min(100,level+1));if(!used)S.clean=1;if(t<10&&level>=5)S.swift=1;save();
+ const dly=level>=1000;if(dly)S.dailyBest=Math.min(S.dailyBest||1e9,t);else{if(!b)S.best[level]={t,s:st};else{b.t=Math.min(b.t,t);b.s=Math.max(b.s,st)}S.level=Math.max(S.level,Math.min(100,level+1))}
+ const gain=dly?15:st*5;S.coins=(S.coins||0)+gain;if(!used)S.clean=1;if(t<10&&level>=5&&!dly)S.swift=1;save();confetti();shareTxt='I solved '+(dly?'today\'s Cubik daily puzzle':'Cubik level '+level)+' in '+fmt(t*1000)+'. Beat me!';
  const got=ACH.filter(a=>a[3]()).length-before;
  $('stars').textContent='★'.repeat(st)+'☆'.repeat(3-st);
- $('winTxt').textContent=(level>=100?'You finished all 100 levels. ':'')+'Level '+level+' in '+fmt(t*1000)+', '+moves+' moves.'+(got?' Trophy unlocked!':'');
- $('nextBtn').hidden=level>=100;$('win').hidden=false;[72,76,79,84].forEach((m,i)=>setTimeout(()=>tone(m,.9,.14),i*170))}
+ $('winTxt').textContent=(level>=100?'You finished all 100 levels. ':'')+(dly?'Daily puzzle':'Level '+level)+' in '+fmt(t*1000)+', '+moves+' moves. +'+gain+' coins.'+(got?' Trophy unlocked!':'');
+ $('winH').textContent='Solved';$('nextBtn').hidden=level===100;$('nextBtn').textContent=dly?'Continue levels':'Next level';$('nextBtn').onclick=()=>startLevel(dly?Math.min(S.level,100):Math.min(100,level+1));$('win').hidden=false;[72,76,79,84].forEach((m,i)=>setTimeout(()=>tone(m,.9,.14),i*170))}
 
 /* ---------- Menus ---------- */
 let tab='levels';
@@ -228,12 +241,16 @@ async function renderPanel(){const box=$('pbody');document.querySelectorAll('.ta
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;renderPanel()});
 $('pclose').onclick=()=>$('panel').hidden=true;
 $('bLv').onclick=()=>openPanel('levels');$('bTr').onclick=()=>openPanel('trophies');$('bTop').onclick=()=>openPanel('top');$('wLv').onclick=()=>openPanel('levels');
-$('nm').value=S.name;const refreshPlay=()=>$('play').textContent=S.level>1?'Continue · Level '+Math.min(S.level,100):'Play';refreshPlay();
+$('nm').value=S.name;const refreshPlay=()=>{$('play').textContent=S.level>1?'Continue · Level '+Math.min(S.level,100):'Play';$('coin').textContent='🪙 '+(S.coins||0)+' · 🔥 '+(S.streak||1)+(S.streak>1?' days':' day')};
 $('play').onclick=async()=>{initAudio();const v=$('nm').value.trim();if(v&&v!==S.name){S.name=v;saveLocal();await Cloud.pull()}startLevel(Math.min(S.level,100))};
 $('nextBtn').onclick=()=>startLevel(Math.min(100,level+1));
 $('fix').onclick=fixRow;$('hint').onclick=onHint;
-$('back').onclick=()=>{mode='landing';runId++;busy=false;clearInterval(tTimer);buildCube();$('landing').hidden=false;$('hud').hidden=true;$('win').hidden=true;refreshPlay();clearHint();tPhi=1;fit()};
+$('back').onclick=()=>{mode='landing';runId++;busy=false;clearInterval(tTimer);buildCube();$('landing').hidden=false;$('hud').hidden=true;$('win').hidden=true;refreshPlay();clearHint();tPhi=1;lock=null;limit=0;lockM.visible=false;setWorld(Math.min(S.level,100));fit()};
 $('vl').onclick=()=>tTheta-=Math.PI/2;$('vr').onclick=()=>tTheta+=Math.PI/2;$('vf').onclick=()=>tPhi=Math.min(2.9,Math.max(.25,Math.PI-tPhi));
+$('bDaily').onclick=()=>{initAudio();startLevel(1000+day()%9000)};
+$('cb').onclick=()=>{S.cb=!S.cb;saveLocal();applyCB()};
+const applyZen=()=>{$('tm').style.visibility=S.zen?'hidden':'visible';$('zen').textContent='Zen: '+(S.zen?'on':'off')};$('zen').onclick=()=>{S.zen=!S.zen;saveLocal();applyZen()};
+$('shareB').onclick=()=>{if(navigator.share)navigator.share({title:'Cubik',text:shareTxt,url:location.href}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(shareTxt+' '+location.href)};
 ['snd','lsnd'].forEach(i=>$(i).onclick=()=>{initAudio();setMusic(!musicOn)});
 
 /* ---------- Touch & mouse ---------- */
@@ -259,7 +276,7 @@ function tone(m,d,v,type='triangle',att=.01,t){if(!AC)return;t=t||AC.currentTime
  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(bus);o.start(t);o.stop(t+d+.05)}
 function blip(hz){if(!AC||!musicOn)return;const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.frequency.setValueAtTime(hz,t);o.frequency.exponentialRampToValueAtTime(hz/2,t+.12);
  g.gain.setValueAtTime(.1,t);g.gain.exponentialRampToValueAtTime(.0001,t+.14);o.connect(g);g.connect(master);o.start(t);o.stop(t+.16)}
-function sched(){const spb=60/76/2;while(nextT<AC.currentTime+.35){const ch=chords[Math.floor(n8/8)%4],p=n8%8;
+function sched(){const spb=60/76/2;while(nextT<AC.currentTime+.35){const ch=chords[Math.floor(n8/8)%4].map(x=>x+shift),p=n8%8;
  if(p===0){ch.forEach(m=>tone(m,spb*8,.06,'sine',.9,nextT));tone(ch[0]-12,spb*4,.15,'triangle',.02,nextT)}
  if(p===4)tone(ch[0]-12,spb*3,.1,'triangle',.02,nextT);
  if(Math.random()<.6)tone(ch[Math.floor(Math.random()*3)]+12*(1+(Math.random()<.3?1:0)),spb*3,.075,'triangle',.01,nextT);nextT+=spb;n8++}}
@@ -275,6 +292,8 @@ const calm=matchMedia('(prefers-reduced-motion:reduce)').matches;
  theta+=(tTheta-theta)*.12;phi+=(tPhi-phi)*.12;
  camera.position.set(dist*Math.sin(phi)*Math.sin(theta),dist*Math.cos(phi),dist*Math.sin(phi)*Math.cos(theta));camera.lookAt(0,0,0);
  renderer.render(scene,camera);requestAnimationFrame(loop)})();
+{const td=day();if(S.last!==td){S.streak=S.last===td-1?(S.streak||0)+1:1;S.last=td;S.coins=(S.coins||0)+10+Math.min(S.streak,7)*5;saveLocal()}}
+applyCB();applyZen();setWorld(Math.min(S.level,100));refreshPlay();
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
