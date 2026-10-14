@@ -12,6 +12,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#2a2150,#100d20 70%);color:var(--paper);font-family:'Bricolage Grotesque',system-ui,sans-serif;user-select:none}
+#bg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}#wb{position:fixed;top:30%;left:0;right:0;text-align:center;font-size:clamp(34px,10vw,60px);font-weight:800;pointer-events:none;z-index:50;text-shadow:0 2px 14px #000;animation:wb 2.4s ease forwards}@keyframes wb{0%{opacity:0;transform:translateY(12px)}20%,70%{opacity:1}100%{opacity:0}}
 #cv{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
 section{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 18px) 18px calc(env(safe-area-inset-bottom,0px) + 20px)}
 button,input{pointer-events:auto;font:inherit;border:0;border-radius:999px}
@@ -53,7 +54,9 @@ button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3
 </style>
 </head>
 <body>
+<canvas id="bg"></canvas>
 <canvas id="cv"></canvas>
+<div id="wb" hidden></div>
 
 <section id="landing">
   <div><h1 id="logo" aria-label="Cubik"></h1><p class="tag">A calm puzzle. 100 levels. Take your time.</p></div>
@@ -172,17 +175,31 @@ function pushMove(m){const t=stack[stack.length-1];if(t&&t[0]===m[0]&&t[1]===m[1
 
 /* ---------- Levels: same puzzle for every player, gently harder ---------- */
 const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
-const WORLDS=[['Meadow','#1f3b2d','#0c1a14'],['Ocean','#12396b','#07162b'],['Dusk','#5b2a5e','#1a0c24'],['Desert','#6b4423','#22140a'],['Frost','#2b4f6b','#0b1722'],['Jungle','#1c5a3a','#07201a'],['Sakura','#6b2f45','#240e1a'],['Volcano','#6b2218','#1f0a08'],['Space','#25205a','#0a0820'],['Night City','#3a1f6b','#0a0a1c']];
+const WORLDS=[['Meadow','#2f7a4d','#10281c'],['Ocean','#1b6fb5','#071a33'],['Dusk','#8a3a8f','#1d0c2a'],['Desert','#a8682f','#2a160a'],['Frost','#4a8fb8','#0d2030'],['Jungle','#23864f','#082a1f'],['Sakura','#b0486f','#2a0e1f'],['Volcano','#b03a22','#260a08'],['Space','#3a33a0','#0a0820'],['Night City','#5b2fb0','#0a0a24']];
 let shift=0,lock=null,limit=0,shareTxt='';
 const wIdx=L=>L>=1000?8:Math.min(9,Math.floor((L-1)/10)),day=()=>Math.floor((Date.now()-new Date().getTimezoneOffset()*6e4)/864e5);
-function setWorld(L){const w=WORLDS[wIdx(L)],g=`radial-gradient(120% 90% at 50% 40%,${w[1]},${w[2]} 70%)`;document.body.style.background=document.documentElement.style.background=g;shift=[0,2,-2,5,-5,3,7,-3,4,-4][wIdx(L)]}
+function setWorld(L){const w=WORLDS[wIdx(L)],g=`radial-gradient(120% 90% at 50% 40%,${w[1]},${w[2]} 70%)`;document.body.style.background=document.documentElement.style.background=g;shift=[0,2,-2,5,-5,3,7,-3,4,-4][wIdx(L)];if(wIdx(L)!==fxW)fxSet(wIdx(L))}
+/* Moving scenery behind the cube: [colour,count,drift x,drift y,min size,max size,style 0 glow/1 bubble/2 petal/3 rain] */
+const FX=[['#e8ff7a',28,.15,-.12,1.5,3.5,0],['#bfe8ff',24,0,-.55,3,9,1],['#ffb3f0',30,.1,-.08,1.5,3.5,0],['#f0c987',60,.9,.12,1,2.2,0],['#ffffff',60,0,.6,1.5,3.5,0],['#a8ff9a',30,.1,-.1,1.5,3.5,0],['#ffc2d9',34,.35,.5,3,6,2],['#ff8a3d',40,.1,-.7,1.5,3.5,0],['#ffffff',90,.03,0,.6,2,0],['#6ff3ff',50,.2,2.4,8,18,3]];
+const bg=$('bg'),bx=bg.getContext('2d');let P=[],fxW=-1;
+function fxSet(w){fxW=w;bg.width=W;bg.height=H;const f=FX[w];P=Array.from({length:f[1]},()=>({x:Math.random()*W,y:Math.random()*H,r:f[4]+Math.random()*(f[5]-f[4]),p:Math.random()*6.28,k:.6+Math.random()*.8}));if(calm)fxDraw(0)}
+function fxDraw(t){const f=FX[fxW],st=f[6];bx.clearRect(0,0,W,H);bx.fillStyle=bx.strokeStyle=f[0];bx.lineWidth=1.5;
+ for(const q of P){if(!calm){q.x+=(f[2]+(st===0||st===2?Math.sin(t/1500+q.p)*.25:0))*q.k;q.y+=f[3]*q.k;if(q.y<-20)q.y=H+20;if(q.y>H+20)q.y=-20;if(q.x>W+20)q.x=-20;if(q.x<-20)q.x=W+20}
+  const tw=.5+.5*Math.sin(t/700*q.k+q.p);bx.beginPath();bx.shadowBlur=0;
+  if(st===0){bx.globalAlpha=.25+.75*tw;bx.shadowColor=f[0];bx.shadowBlur=q.r*3;bx.arc(q.x,q.y,q.r,0,6.28);bx.fill()}
+  else if(st===1){bx.globalAlpha=.55;bx.arc(q.x,q.y,q.r,0,6.28);bx.stroke()}
+  else if(st===2){bx.globalAlpha=.8;bx.save();bx.translate(q.x,q.y);bx.rotate(t/900*q.k+q.p);bx.ellipse(0,0,q.r,q.r*.55,0,0,6.28);bx.fill();bx.restore()}
+  else{bx.globalAlpha=.35;bx.moveTo(q.x,q.y);bx.lineTo(q.x-1,q.y-q.r*1.6);bx.stroke()}}
+ bx.globalAlpha=1;bx.shadowBlur=0}
+addEventListener('resize',()=>fxSet(fxW));
+function banner(n){const e=$('wb');e.textContent=n;e.hidden=false;e.style.animation='none';e.offsetWidth;e.style.animation='';setTimeout(()=>e.hidden=true,2500)}
 const place=(o,a,l)=>{o.rotation.set(a==='y'?Math.PI/2:0,a==='x'?Math.PI/2:0,0);o.position.set(0,0,0);o.position[a]=l};
 const lockM=new THREE.Mesh(new THREE.BoxGeometry(3.1,3.1,1.08),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.5,depthWrite:false}));lockM.visible=false;scene.add(lockM);
 function confetti(){const c=THEMES[S.theme].c;for(let i=0;i<46;i++){const d=document.createElement('i');d.className='cf';d.style.cssText=`left:${Math.random()*100}vw;background:${c[i%6]};animation-delay:${Math.random()*.5}s;--dx:${Math.random()*120-60}px`;document.body.appendChild(d);setTimeout(()=>d.remove(),3300)}}
 const nMoves=L=>L>=1000?9:L<=10?[1,1,2,2,2,3,3,3,4,4][L-1]:Math.min(25,4+Math.round((L-10)*.22));
 function updHud(){$('lv').textContent=level>=1000?'Daily puzzle':'Level '+level+' · '+WORLDS[wIdx(level)][0];$('mv').textContent=moves+(limit?' / '+limit:'')+(moves===1&&!limit?' move':' moves');$('fix').textContent='Fix a row ×'+helps;$('fix').disabled=!helps;$('hint').textContent=hintLeft>0?'Hint · '+hintLeft+' left':(S.coins||0)>=25?'Hint · 25 🪙':'Hint · watch ad'}
 async function startLevel(L){$('panel').hidden=true;$('win').hidden=true;mode='game';level=L;buildCube();stack=[];moves=0;helps=3;used=false;finished=false;lock=null;limit=0;if(L>20&&L<1000&&L%3===0){const q=rng(L*31+7);lock=['xyz'[Math.floor(q()*3)],q()<.5?-1:1]}if(L>10&&L<1000&&L%5===0)limit=nMoves(L)+3;
- lockM.visible=!!lock;if(lock)place(lockM,lock[0],lock[1]);setWorld(L);
+ lockM.visible=!!lock;if(lock)place(lockM,lock[0],lock[1]);setWorld(L);if(L<1000&&(L-1)%10===0)banner('World '+(wIdx(L)+1)+' · '+WORLDS[wIdx(L)][0]);
  clearInterval(tTimer);$('tm').textContent='0:00';updHud();$('landing').hidden=true;$('hud').hidden=false;{const dl=((.78-theta+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;tTheta=theta+dl;tPhi=1}clearHint();fit();
  $('tip').textContent=L<=2?'Swipe across a face to turn that row. Drag empty space to look around.':lock?'The dark layer is locked. Use the others.':limit?'Move limit '+limit+'. Think first.':'';busy=true;const tok=++runId;
  const r=rng(L*7919+13),layers=L<=10?[-1,1]:[-1,0,1];let la='',ll=9;
@@ -291,7 +308,7 @@ const calm=matchMedia('(prefers-reduced-motion:reduce)').matches;
  if(mode==='landing'&&!down&&!calm)tTheta+=.004;
  theta+=(tTheta-theta)*.12;phi+=(tPhi-phi)*.12;
  camera.position.set(dist*Math.sin(phi)*Math.sin(theta),dist*Math.cos(phi),dist*Math.sin(phi)*Math.cos(theta));camera.lookAt(0,0,0);
- renderer.render(scene,camera);requestAnimationFrame(loop)})();
+ if(!calm&&fxW>=0)fxDraw(performance.now());renderer.render(scene,camera);requestAnimationFrame(loop)})();
 {const td=day();if(S.last!==td){S.streak=S.last===td-1?(S.streak||0)+1:1;S.last=td;S.coins=(S.coins||0)+10+Math.min(S.streak,7)*5;saveLocal()}}
 applyCB();applyZen();setWorld(Math.min(S.level,100));refreshPlay();
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(()=>{});
